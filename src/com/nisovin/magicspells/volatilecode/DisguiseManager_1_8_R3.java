@@ -654,6 +654,41 @@ public class DisguiseManager_1_8_R3 extends DisguiseManager {
 					}
 				}
 			}
+			PlayerDisguiseData data = disguise.getPlayerDisguiseData();
+			if (disguise.disguiseSelf() && data != null && data.skin != null && data.sig != null) {
+				data = data.clone();
+				data.uuid = disguised.getUniqueId().toString();
+				GameProfile profile = getGameProfile(disguised.getName(), data);
+				PacketPlayOutPlayerInfo packetinfo = new PacketPlayOutPlayerInfo();
+				refPacketPlayerInfo.set(packetinfo, "a", EnumPlayerInfoAction.ADD_PLAYER);
+				List<PlayerInfoData> list = new ArrayList<PlayerInfoData>();
+				list.add(packetinfo.new PlayerInfoData(profile, 0, EnumGamemode.SURVIVAL, new ChatComponentText(disguised.getName())));
+				refPacketPlayerInfo.set(packetinfo, "b", list);
+				PacketPlayOutRespawn packetrespawn = new PacketPlayOutRespawn(0, EnumDifficulty.HARD, WorldType.NORMAL, EnumGamemode.getById(disguised.getGameMode().getValue()));
+				List<AttributeInstance> l = new ArrayList<AttributeInstance>();
+				AttributeInstance a = ((CraftPlayer)disguised).getHandle().getAttributeInstance(GenericAttributes.maxHealth);
+				if (a != null) {
+					l.add(a);
+				}
+				PacketPlayOutUpdateAttributes packetattr = new PacketPlayOutUpdateAttributes(disguised.getEntityId(), l);
+				PacketPlayOutUpdateHealth packethealth = new PacketPlayOutUpdateHealth((float)disguised.getHealth(), disguised.getFoodLevel(), disguised.getSaturation());
+				try {
+					protocolManager.sendServerPacket(disguised, new PacketContainer(PacketType.Play.Server.PLAYER_INFO, packetinfo), false);
+					protocolManager.sendServerPacket(disguised, new PacketContainer(PacketType.Play.Server.RESPAWN, packetrespawn), false);
+					if (l.size() > 0) {
+						protocolManager.sendServerPacket(disguised, new PacketContainer(PacketType.Play.Server.UPDATE_ATTRIBUTES, packetattr), false);
+					}
+					protocolManager.sendServerPacket(disguised, new PacketContainer(PacketType.Play.Server.UPDATE_HEALTH, packethealth), false);
+					disguised.updateInventory();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				MagicSpells.scheduleDelayedTask(new Runnable() {
+					public void run() {
+						//disguised.updateInventory();
+					}
+				}, 20);
+			}
 		}
 	}
 	
